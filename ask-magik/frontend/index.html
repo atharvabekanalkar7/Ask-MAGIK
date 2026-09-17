@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ASK MAGIK | Governed Conversational Intelligence - Skyline Telecom</title>
+  <meta name="description" content="Conversational intelligence and natural language SQL analytics for Skyline Telecom.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="app-layout" id="app-layout">
+    
+    <!-- LEFT SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="brand">
+          <span class="brand-title">ASK MAGIK</span>
+        </div>
+        <button class="collapse-btn" id="sidebar-toggle" title="Toggle Sidebar" aria-label="Toggle Sidebar">
+          <svg class="icon-svg" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="10 3 5 8 10 13"></polyline>
+          </svg>
+        </button>
+      </div>
+
+      <!-- COMPANY SELECTOR -->
+      <div class="company-section">
+        <div class="section-label">COMPANY</div>
+        <div class="company-dropdown-trigger" id="company-trigger" tabindex="0">
+          <span class="company-name" id="selected-company-name">SKYLINE TELECOM</span>
+          <svg class="chevron-svg" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
+            <polyline points="4 6 8 10 12 6"></polyline>
+          </svg>
+        </div>
+
+        <!-- POPUP DRAWER (Screenshot 1) -->
+        <div class="company-popover" id="company-popover">
+          <div class="popover-eyebrow">CURRENT COMPANY</div>
+          <div class="popover-title">SKYLINE TELECOM</div>
+          <div class="popover-sub">Telecommunications · 9.1M subscribers</div>
+          <div class="popover-note">Additional companies can be configured later.</div>
+        </div>
+      </div>
+
+      <!-- NAVIGATION LINKS -->
+      <div class="nav-section">
+        <div class="section-label" id="nav-label">NAVIGATION</div>
+        <nav class="nav-list">
+          <button class="nav-item active" data-view="overview" id="nav-overview">
+            <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="2" width="5" height="5" rx="1"></rect>
+              <rect x="9" y="2" width="5" height="5" rx="1"></rect>
+              <rect x="2" y="9" width="5" height="5" rx="1"></rect>
+              <rect x="9" y="9" width="5" height="5" rx="1"></rect>
+            </svg>
+            <span>Overview</span>
+          </button>
+
+          <button class="nav-item" data-view="ask-data" id="nav-ask-data">
+            <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="7" cy="7" r="4.5"></circle>
+              <line x1="10.5" y1="10.5" x2="14" y2="14"></line>
+            </svg>
+            <span>Ask Data</span>
+          </button>
+
+          <button class="nav-item" data-view="datasources" id="nav-datasources">
+            <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <ellipse cx="8" cy="4" rx="6" ry="2.2"></ellipse>
+              <path d="M2 4v4c0 1.2 2.7 2.2 6 2.2s6-1 6-2.2V4"></path>
+              <path d="M2 8v4c0 1.2 2.7 2.2 6 2.2s6-1 6-2.2V8"></path>
+            </svg>
+            <span>Data Sources</span>
+          </button>
+
+          <button class="nav-item" data-view="history" id="nav-history">
+            <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="8" cy="8" r="6"></circle>
+              <polyline points="8 4.5 8 8 10.5 9.5"></polyline>
+            </svg>
+            <span>Query History</span>
+          </button>
+
+          <button class="nav-item" data-view="saved-insights" id="nav-saved-insights">
+            <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 2.5h8a1 1 0 0 1 1 1v10l-5-3-5 3v-10a1 1 0 0 1 1-1z"></path>
+            </svg>
+            <span>Saved Insights</span>
+          </button>
+        </nav>
+      </div>
+
+      <!-- SYSTEM LINKS -->
+      <div class="nav-section">
+        <div class="section-label">SYSTEM</div>
+        <nav class="nav-list">
+          <button class="nav-item" data-view="knowledge" id="nav-knowledge">
+            <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M2 3.5h5a2 2 0 0 1 2 2V14a2 2 0 0 0-2-2H2z"></path>
+              <path d="M14 3.5H9a2 2 0 0 0-2 2V14a2 2 0 0 1 2-2h5z"></path>
+            </svg>
+            <span>Knowledge Layer</span>
+          </button>
+
+          <button class="nav-item" data-view="security" id="nav-security">
+            <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M8 2.5l5 2.2v4.3c0 3.2-2.5 5.5-5 6.5-2.5-1-5-3.3-5-6.5V4.7z"></path>
+            </svg>
+            <span>Security</span>
+          </button>
+
+          <button class="nav-item" data-view="audit-log" id="nav-audit-log">
+            <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="3" y1="4" x2="13" y2="4"></line>
+              <line x1="3" y1="8" x2="13" y2="8"></line>
+              <line x1="3" y1="12" x2="8" y2="12"></line>
+            </svg>
+            <span>Audit Log</span>
+          </button>
+
+        </nav>
+      </div>
+
+      <!-- SYSTEM STATUS (BOTTOM PINNED) -->
+      <div class="sidebar-footer">
+        <div class="system-status-title">SYSTEM STATUS</div>
+        <div class="status-indicator">
+          <span class="status-dot operational"></span>
+          <span class="status-text" id="sidebar-status-text">Operational</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- MAIN APP CONTAINER -->
+    <div class="main-wrapper">
+      
+      <!-- TOP STATUS BAR -->
+      <header class="top-header">
+        <div class="header-left">
+          <span class="header-brand-title">SKYLINE TELECOM</span>
+          <div class="header-badges">
+            <span class="badge-item"><span class="badge-lbl">ENVIRONMENT:</span> <span class="badge-val cyan">PILOT</span></span>
+            <span class="badge-item"><span class="badge-lbl">DATA FRESHNESS:</span> <span class="badge-val">UPDATED TODAY</span></span>
+            <span class="badge-item status-live">
+              <span class="status-dot small operational"></span>
+              <span class="badge-val green">OPERATIONAL</span>
+            </span>
+          </div>
+        </div>
+
+        <div class="header-right">
+          <button class="settings-btn" id="open-settings-btn">
+            <span>Settings</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- VIEW CONTAINER -->
+      <main class="content-body" id="content-container">
+        
+        <!-- =================================================================== -->
+        <!-- VIEW 1: OVERVIEW (Screenshot 1) -->
+        <!-- =================================================================== -->
+        <section class="view-panel active" id="view-overview">
+          <div class="overview-header-row">
+            <div class="overview-title-block">
+              <div class="workspace-eyebrow">GOVERNED CONVERSATIONAL INTELLIGENCE / 01</div>
+              <h1 class="hero-headline">Ask your data.</h1>
+              <p class="hero-subhead">Conversational intelligence for governed enterprise analytics.</p>
+              
+              <div class="hero-actions">
+                <button class="btn-primary" id="btn-hero-ask">
+                  <span>ASK MAGIK</span>
+                  <span class="btn-arrow">→</span>
+                </button>
+                <button class="btn-secondary" id="btn-hero-upload">
+                  <span>UPLOAD DATA</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- CURRENT COMPANY RIGHT CARD (Screenshot 1) -->
+            <div class="current-company-card">
+              <div class="comp-card-eyebrow">CURRENT COMPANY</div>
+              <div class="comp-card-name">SKYLINE TELECOM</div>
+              <div class="comp-card-division">MAGIK Customer Value Management</div>
+              <div class="comp-card-status">
+                <span class="status-dot small operational"></span>
+                <span>Data mart connected</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- KEY METRICS ROW (Screenshot 1: 5 Columns) -->
+          <div class="metrics-grid">
+            <div class="metric-col">
+              <div class="metric-value">9.1M</div>
+              <div class="metric-label">SUBSCRIBERS</div>
+            </div>
+            <div class="metric-col">
+              <div class="metric-value">74%</div>
+              <div class="metric-label">PREPAID</div>
+            </div>
+            <div class="metric-col">
+              <div class="metric-value">26%</div>
+              <div class="metric-label">POSTPAID</div>
+            </div>
+            <div class="metric-col">
+              <div class="metric-value">5</div>
+              <div class="metric-label">REGIONS</div>
+            </div>
+            <div class="metric-col">
+              <div class="metric-value">6</div>
+              <div class="metric-label">CENTRAL ANALYSTS</div>
+            </div>
+          </div>
+
+          <!-- DECISION INTELLIGENCE / GOVERNED ANALYTICAL PATH (Screenshot 1) -->
+          <div class="decision-intelligence-section">
+            <div class="di-header">
+              <div class="di-title-block">
+                <div class="di-eyebrow">DECISION INTELLIGENCE</div>
+                <h2 class="di-title">Governed analytical path</h2>
+              </div>
+              <div class="di-nominal">
+                <span class="status-dot small operational"></span>
+                <span class="nominal-text">SYSTEMS NOMINAL</span>
+              </div>
+            </div>
+
+            <div class="pipeline-path-track">
+              <div class="path-step">
+                <span class="step-num">01</span>
+                <span class="step-label">Business Questions</span>
+              </div>
+              <span class="path-sep">›</span>
+
+              <div class="path-step">
+                <span class="step-num">02</span>
+                <span class="step-label">Knowledge Retrieval</span>
+              </div>
+              <span class="path-sep">›</span>
+
+              <div class="path-step">
+                <span class="step-num">03</span>
+                <span class="step-label">SQL Generation</span>
+              </div>
+              <span class="path-sep">›</span>
+
+              <div class="path-step">
+                <span class="step-num">04</span>
+                <span class="step-label">Policy Validation</span>
+              </div>
+              <span class="path-sep">›</span>
+
+              <div class="path-step">
+                <span class="step-num">05</span>
+                <span class="step-label">MAGIK Data</span>
+              </div>
+              <span class="path-sep">›</span>
+
+              <div class="path-step">
+                <span class="step-num">06</span>
+                <span class="step-label">Insight</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- =================================================================== -->
+        <!-- VIEW 2: ASK DATA (Screenshot 2) -->
+        <!-- =================================================================== -->
+        <section class="view-panel" id="view-ask-data">
+          <div class="ask-data-layout">
+            
+            <!-- LEFT WORKSPACE COLUMN -->
+            <div class="workspace-left">
+              <div class="workspace-header">
+                <div class="workspace-eyebrow">CONVERSATIONAL WORKSPACE / 02</div>
+                <div class="workspace-title-row">
+                  <h1 class="workspace-title">Ask Data</h1>
+                  <span class="simulated-badge">SIMULATED PILOT</span>
+                </div>
+                <p class="workspace-subhead">Translate business questions into governed analytical evidence.</p>
+              </div>
+
+              <!-- QUERY INPUT CONTAINER -->
+              <div class="query-box-container">
+                <div class="query-box-top">
+                  <span class="box-label">NATURAL LANGUAGE QUERY</span>
+                  <span class="context-ready-badge" id="context-ready-indicator">CONTEXT READY</span>
+                </div>
+
+                <div class="query-input-wrapper">
+                  <textarea 
+                    class="query-textarea" 
+                    id="user-query-input" 
+                    placeholder="What would you like to know?"
+                    rows="3"
+                  ></textarea>
+                </div>
+
+                <div class="query-box-bottom">
+                  <span class="data-scope-text">SKYLINE TELECOM · governed data scope</span>
+                  <button class="btn-primary" id="btn-submit-query">
+                    <span id="btn-submit-text">ASK MAGIK</span>
+                    <span class="btn-arrow">→</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- SAMPLE QUERY CARDS (2x2 Grid from Screenshot 2) -->
+              <div class="sample-queries-grid">
+                <div class="sample-card" data-query="Which prepaid plans had the highest customer loss in the western region last month?">
+                  <p class="sample-query-text">Which prepaid plans had the highest customer loss in the western region last month?</p>
+                </div>
+
+                <div class="sample-card" data-query="How did the Ramadan campaign perform year-over-year by region?">
+                  <p class="sample-query-text">How did the Ramadan campaign perform year-over-year by region?</p>
+                </div>
+
+                <div class="sample-card" data-query="Which postpaid small-business segments experienced more than a 30% usage decline?">
+                  <p class="sample-query-text">Which postpaid small-business segments experienced more than a 30% usage decline?</p>
+                </div>
+
+                <div class="sample-card" data-query="What is driving the rise in early customer loss?">
+                  <p class="sample-query-text">What is driving the rise in early customer loss?</p>
+                </div>
+              </div>
+
+              <!-- EXECUTED RESULT AREA -->
+              <div class="query-result-section hidden" id="query-result-panel">
+                
+                <!-- KEY INSIGHT & CONFIDENCE BANNER -->
+                <div class="result-banner">
+                  <div class="banner-top">
+                    <span class="badge-confidence" id="res-confidence">CONFIDENCE: HIGH</span>
+                    <div class="banner-actions">
+                      <button class="btn-icon-subtle" id="btn-save-current-insight" title="Save Insight">
+                        <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6">
+                          <path d="M4 2.5h8a1 1 0 0 1 1 1v10l-5-3-5 3v-10a1 1 0 0 1 1-1z"></path>
+                        </svg>
+                        <span>Save Insight</span>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="banner-insight" id="res-key-insight">
+                    Analyzing...
+                  </div>
+                </div>
+
+                <!-- EXECUTIVE ANSWER -->
+                <div class="answer-card">
+                  <div class="card-eyebrow">EXECUTIVE SUMMARY</div>
+                  <div class="answer-prose" id="res-answer-text">
+                    <!-- Dynamic Answer Content -->
+                  </div>
+
+                  <!-- SUPPORTING FIGURES -->
+                  <div class="supporting-figures-list" id="res-figures-list">
+                    <!-- Dynamic Pill Badges -->
+                  </div>
+                </div>
+
+                <!-- TABS: CHART / TABLE / SQL / ASSUMPTIONS -->
+                <div class="tabs-container">
+                  <div class="tabs-header">
+                    <button class="tab-btn active" data-tab="tab-chart">Visualization</button>
+                    <button class="tab-btn" data-tab="tab-table">Data Table</button>
+                    <button class="tab-btn" data-tab="tab-sql">Generated SQL</button>
+                    <button class="tab-btn" data-tab="tab-evidence">Audit Evidence</button>
+                  </div>
+
+                  <div class="tabs-content">
+                    <!-- TAB 1: CHART -->
+                    <div class="tab-pane active" id="tab-chart">
+                      <div class="chart-wrapper" id="chart-container">
+                        <!-- Dynamic SVG Chart -->
+                      </div>
+                    </div>
+
+                    <!-- TAB 2: TABLE -->
+                    <div class="tab-pane" id="tab-table">
+                      <div class="table-meta-bar">
+                        <span id="table-row-count-label">0 rows</span>
+                        <input type="text" class="table-filter-input" id="table-filter-input" placeholder="Search records...">
+                      </div>
+                      <div class="table-scroll" id="table-container">
+                        <!-- Dynamic Table -->
+                      </div>
+                    </div>
+
+                    <!-- TAB 3: SQL -->
+                    <div class="tab-pane" id="tab-sql">
+                      <div class="sql-box-header">
+                        <div class="sql-badges">
+                          <span class="sql-status-badge">AST Verified</span>
+                          <span class="sql-status-badge">Read-Only</span>
+                          <span class="sql-status-badge">Max 500 Rows</span>
+                        </div>
+                        <button class="btn-copy-sql" id="btn-copy-sql">Copy SQL</button>
+                      </div>
+                      <pre class="sql-code-block" id="sql-display-block"><code>-- SQL will appear here</code></pre>
+                    </div>
+
+                    <!-- TAB 4: AUDIT EVIDENCE -->
+                    <div class="tab-pane" id="tab-evidence">
+                      <div class="evidence-grid" id="evidence-display">
+                        <!-- Dynamic Evidence Details -->
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+            </div>
+
+            <!-- RIGHT CONTEXT & TRACE PANELS (Screenshot 2) -->
+            <div class="workspace-right">
+              
+              <!-- PANEL 1: RETRIEVED CONTEXT -->
+              <div class="context-panel">
+                <div class="panel-header">
+                  <span class="panel-title">RETRIEVED CONTEXT</span>
+                  <span class="trust-badge">MINIMUM TRUSTWORTHY CONTEXT</span>
+                </div>
+
+                <div class="context-group">
+                  <div class="group-label">BUSINESS GLOSSARY</div>
+                  <div class="group-content" id="context-glossary">
+                    Customer Loss · Prepaid · Early Churn · Active Subscriber
+                  </div>
+                </div>
+
+                <div class="context-group">
+                  <div class="group-label">SCHEMA</div>
+                  <div class="group-content" id="context-schema">
+                    subscriber_profile · churn_events · revenue_monthly
+                  </div>
+                </div>
+
+                <div class="context-group">
+                  <div class="group-label">RELATIONSHIPS</div>
+                  <div class="group-content" id="context-relationships">
+                    subscriber_profile ↔ churn_events
+                  </div>
+                </div>
+
+                <div class="context-group">
+                  <div class="group-label">VALIDATED EXAMPLES</div>
+                  <div class="group-content" id="context-examples">
+                    3 similar analytical questions
+                  </div>
+                </div>
+
+                <div class="context-footer-note">
+                  Only metadata, approved definitions, and relevant relationships enter context—not the customer database.
+                </div>
+              </div>
+
+              <!-- PANEL 2: ANALYSIS TRACE (Collapsible from Screenshot 2) -->
+              <div class="trace-panel">
+                <div class="panel-header trace-header" id="trace-toggle-header">
+                  <span class="panel-title">ANALYSIS TRACE</span>
+                  <span class="trace-toggle-icon" id="trace-toggle-icon">−</span>
+                </div>
+
+                <div class="trace-body" id="trace-body">
+                  <div class="trace-step-item">
+                    <div class="step-head">
+                      <span class="step-title">01 Intent Detection</span>
+                      <span class="step-ms" id="trace-ms-01">18 ms</span>
+                    </div>
+                    <div class="step-detail" id="trace-desc-01">
+                      Question classified as comparative churn analysis
+                    </div>
+                  </div>
+
+                  <div class="trace-step-item">
+                    <div class="step-head">
+                      <span class="step-title">02 Schema Retrieval</span>
+                      <span class="step-ms" id="trace-ms-02">42 ms</span>
+                    </div>
+                    <div class="step-detail" id="trace-desc-02">
+                      3 relevant entities retrieved
+                    </div>
+                  </div>
+
+                  <div class="trace-step-item">
+                    <div class="step-head">
+                      <span class="step-title">03 Business Definition Retrieval</span>
+                      <span class="step-ms" id="trace-ms-03">31 ms</span>
+                    </div>
+                    <div class="step-detail" id="trace-desc-03">
+                      Customer Loss, Prepaid, Early Churn mapped
+                    </div>
+                  </div>
+
+                  <div class="trace-step-item">
+                    <div class="step-head">
+                      <span class="step-title">04 SQL Generation</span>
+                      <span class="step-ms" id="trace-ms-04">56 ms</span>
+                    </div>
+                    <div class="step-detail" id="trace-desc-04">
+                      Dialect-specific SQL generated with temporal constraints
+                    </div>
+                  </div>
+
+                  <div class="trace-step-item">
+                    <div class="step-head">
+                      <span class="step-title">05 Policy Validation</span>
+                      <span class="step-ms" id="trace-ms-05">8 ms</span>
+                    </div>
+                    <div class="step-detail" id="trace-desc-05">
+                      Passed AST verification: SELECT-only, 0 mutations
+                    </div>
+                  </div>
+
+                  <div class="trace-step-item">
+                    <div class="step-head">
+                      <span class="step-title">06 MAGIK Data Execution</span>
+                      <span class="step-ms" id="trace-ms-06">24 ms</span>
+                    </div>
+                    <div class="step-detail" id="trace-desc-06">
+                      Executed against Skyline DataMart (SQLite 3.x)
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+        </section>
+
+        <!-- =================================================================== -->
+        <!-- VIEW 3: DATA SOURCES -->
+        <!-- =================================================================== -->
+        <section class="view-panel" id="view-datasources">
+          <div class="panel-header-standard">
+            <div>
+              <div class="workspace-eyebrow">ENTERPRISE DATAMART / 03</div>
+              <h1 class="standard-title">Data Sources</h1>
+              <p class="standard-subhead">Skyline Telecom synthetic star-snowflake DataMart schema, tables, and live telemetry.</p>
+            </div>
+            <button class="btn-primary" id="btn-datasources-upload">
+              <span>UPLOAD DATA</span>
+              <span class="btn-arrow">+</span>
+            </button>
+          </div>
+
+          <div class="tables-cards-grid" id="tables-list-container">
+            <!-- Dynamic DataMart Tables -->
+          </div>
+        </section>
+
+        <!-- =================================================================== -->
+        <!-- VIEW 4: QUERY HISTORY -->
+        <!-- =================================================================== -->
+        <section class="view-panel" id="view-history">
+          <div class="panel-header-standard">
+            <div>
+              <div class="workspace-eyebrow">GOVERNANCE & AUDIT / 04</div>
+              <h1 class="standard-title">Query History</h1>
+              <p class="standard-subhead">Log of natural language queries, execution latencies, and generated SQL queries.</p>
+            </div>
+          </div>
+
+          <div class="history-table-container">
+            <table class="standard-table">
+              <thead>
+                <tr>
+                  <th>Timestamp</th>
+                  <th>Question</th>
+                  <th>Tables</th>
+                  <th>Rows</th>
+                  <th>Latency</th>
+                  <th>Confidence</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="history-table-body">
+                <!-- Dynamic History Rows -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- =================================================================== -->
+        <!-- VIEW 5: SAVED INSIGHTS -->
+        <!-- =================================================================== -->
+        <section class="view-panel" id="view-saved-insights">
+          <div class="panel-header-standard">
+            <div>
+              <div class="workspace-eyebrow">EXECUTIVE REPOSITORY / 05</div>
+              <h1 class="standard-title">Saved Insights</h1>
+              <p class="standard-subhead">Bookmarked analytical findings, verified SQL queries, and evidence summaries.</p>
+            </div>
+          </div>
+
+          <div class="saved-insights-grid" id="saved-insights-container">
+            <!-- Dynamic Saved Insight Cards -->
+          </div>
+        </section>
+
+        <!-- =================================================================== -->
+        <!-- VIEW 6: KNOWLEDGE LAYER -->
+        <!-- =================================================================== -->
+        <section class="view-panel" id="view-knowledge">
+          <div class="panel-header-standard">
+            <div>
+              <div class="workspace-eyebrow">AI GROUNDING FOUNDATION / 06</div>
+              <h1 class="standard-title">Knowledge Layer</h1>
+              <p class="standard-subhead">Governed Business Glossary, Schema definitions, and Few-Shot Golden SQL examples.</p>
+            </div>
+            <div class="vector-status-pill" id="knowledge-vector-status">
+              Loading Vector Store...
+            </div>
+          </div>
+
+          <div class="knowledge-tabs-row">
+            <button class="ktab-btn active" data-ktab="ktab-glossary">Business Glossary (17 Terms)</button>
+            <button class="ktab-btn" data-ktab="ktab-golden">Validated Golden SQL (15)</button>
+            <button class="ktab-btn" data-ktab="ktab-relationships">Schema & Joins</button>
+          </div>
+
+          <div class="ktab-content active" id="ktab-glossary">
+            <div class="glossary-grid" id="glossary-items-container">
+              <!-- Dynamic Glossary Terms -->
+            </div>
+          </div>
+
+          <div class="ktab-content" id="ktab-golden">
+            <div class="golden-queries-list" id="golden-items-container">
+              <!-- Dynamic Golden SQL Examples -->
+            </div>
+          </div>
+
+          <div class="ktab-content" id="ktab-relationships">
+            <div class="relationships-container" id="relationships-container">
+              <!-- Relational join rules -->
+            </div>
+          </div>
+        </section>
+
+        <!-- =================================================================== -->
+        <!-- VIEW 7: SECURITY & FIREWALL -->
+        <!-- =================================================================== -->
+        <section class="view-panel" id="view-security">
+          <div class="panel-header-standard">
+            <div>
+              <div class="workspace-eyebrow">GOVERNANCE ENGINE / 07</div>
+              <h1 class="standard-title">Security & SQL Firewall</h1>
+              <p class="standard-subhead">AST semantic parser enforcement, table allowlists, and real-time SQL sandbox validator.</p>
+            </div>
+            <div class="firewall-status-pill">
+              <span class="status-dot small operational"></span>
+              <span>FIREWALL ACTIVE</span>
+            </div>
+          </div>
+
+          <div class="security-grid">
+            <div class="security-rules-col">
+              <h3 class="sec-col-title">Active Security Policies</h3>
+              <div class="rules-list" id="security-rules-list">
+                <!-- Dynamic rules -->
+              </div>
+            </div>
+
+            <div class="security-sandbox-col">
+              <h3 class="sec-col-title">Interactive SQL Firewall Sandbox</h3>
+              <p class="sec-col-sub">Test arbitrary SQL queries against the AST Firewall before execution.</p>
+              
+              <textarea class="sandbox-textarea" id="sandbox-sql-input" rows="5" placeholder="SELECT * FROM subscriber_profile WHERE region = 'West';"></textarea>
+              
+              <div class="sandbox-actions">
+                <button class="btn-primary" id="btn-test-sandbox">
+                  <span>VALIDATE SQL</span>
+                  <span class="btn-arrow">→</span>
+                </button>
+              </div>
+
+              <div class="sandbox-result-box hidden" id="sandbox-result-box">
+                <!-- Sandbox validation output -->
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- =================================================================== -->
+        <!-- VIEW 8: AUDIT LOG -->
+        <!-- =================================================================== -->
+        <section class="view-panel" id="view-audit-log">
+          <div class="panel-header-standard">
+            <div>
+              <div class="workspace-eyebrow">COMPLIANCE LEDGER / 08</div>
+              <h1 class="standard-title">Audit Log</h1>
+              <p class="standard-subhead">Governed audit trail recording query execution, security firewall decisions, and user identities.</p>
+            </div>
+          </div>
+
+          <div class="history-table-container">
+            <table class="standard-table">
+              <thead>
+                <tr>
+                  <th>Audit ID</th>
+                  <th>Timestamp</th>
+                  <th>User</th>
+                  <th>Action</th>
+                  <th>Decision</th>
+                  <th>Tables</th>
+                  <th>Latency</th>
+                  <th>Confidence</th>
+                </tr>
+              </thead>
+              <tbody id="audit-table-body">
+                <!-- Dynamic Audit Rows -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- UPLOAD DATA MODAL -->
+  <div class="modal-overlay" id="upload-modal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title">Upload Data to Skyline DataMart</h3>
+        <button class="modal-close-btn" id="upload-modal-close">×</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-desc">Select target table and upload CSV or JSON data to stage for governance validation.</p>
+        
+        <div class="form-group">
+          <label class="form-label" for="upload-target-table">Target Table</label>
+          <select class="form-select" id="upload-target-table">
+            <option value="subscriber_profile">subscriber_profile (Demographics & Plans)</option>
+            <option value="usage_daily">usage_daily (Voice, Data & SMS)</option>
+            <option value="campaign_response">campaign_response (Marketing Contacts)</option>
+            <option value="revenue_monthly">revenue_monthly (Billing & Collections)</option>
+            <option value="churn_events">churn_events (Customer Loss)</option>
+          </select>
+        </div>
+
+        <div class="upload-dropzone" id="upload-dropzone">
+          <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.6">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="17 8 12 3 7 8"></polyline>
+            <line x1="12" y1="3" x2="12" y2="15"></line>
+          </svg>
+          <p class="dropzone-text">Drop CSV file here or <span>browse</span></p>
+          <span class="dropzone-sub">Automatic schema matching & zero PII scrubbing</span>
+          <input type="file" id="upload-file-input" accept=".csv,.json" class="hidden">
+        </div>
+
+        <div class="upload-status-msg hidden" id="upload-status-msg"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" id="btn-cancel-upload">Cancel</button>
+        <button class="btn-primary" id="btn-confirm-upload">
+          <span>UPLOAD & STAGE</span>
+          <span class="btn-arrow">→</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TABLE PREVIEW MODAL -->
+  <div class="modal-overlay" id="preview-modal">
+    <div class="modal-box modal-wide">
+      <div class="modal-header">
+        <h3 class="modal-title" id="preview-modal-title">Table Data Preview</h3>
+        <button class="modal-close-btn" id="preview-modal-close">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="preview-scroll" id="preview-table-container">
+          <!-- Dynamic Preview Table -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SETTINGS MODAL -->
+  <div class="modal-overlay" id="settings-modal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title">System & AI Settings</h3>
+        <button class="modal-close-btn" id="settings-modal-close">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label" for="setting-ollama-url">Local Ollama Base URL</label>
+          <input type="text" class="form-input" id="setting-ollama-url" value="http://localhost:11434">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="setting-ollama-model">Active LLM Model</label>
+          <input type="text" class="form-input" id="setting-ollama-model" value="llama3:latest">
+          <span class="form-hint">Used for structured SQL generation and natural language explanation.</span>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="setting-rag-topk">RAG Retrieval Top-K Chunks</label>
+          <input type="number" class="form-input" id="setting-rag-topk" value="4" min="1" max="10">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="setting-freshness-note">Data Freshness Label</label>
+          <input type="text" class="form-input" id="setting-freshness-note" value="UPDATED TODAY">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" id="btn-cancel-settings">Cancel</button>
+        <button class="btn-primary" id="btn-save-settings">
+          <span>SAVE CONFIG</span>
+          <span class="btn-arrow">→</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

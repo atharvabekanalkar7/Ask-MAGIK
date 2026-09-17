@@ -1,0 +1,187 @@
+[
+  {
+    "id": "EX-001",
+    "question": "Which prepaid plans had the highest customer loss in the western region last month?",
+    "intent": "Identify the prepaid plans suffering the greatest churn volume in the West region during August 2026.",
+    "tables": ["subscriber_profile", "churn_events"],
+    "business_rules": [
+      "Rule 1.1: Customer loss requires record in churn_events.",
+      "Rule 1.2: Use COUNT(DISTINCT customer_id).",
+      "Rule 2.1: Prepaid plans are FlexMax 199, FlexMax 299, DataPlus 249, SmartTalk 199.",
+      "Rule 3.1: Region = 'West'.",
+      "Evaluation window is August 2026 (2026-08-01 to 2026-08-31)."
+    ],
+    "sql": "SELECT s.plan, COUNT(DISTINCT c.customer_id) AS customer_loss FROM churn_events c JOIN subscriber_profile s ON c.customer_id = s.customer_id WHERE s.region = 'West' AND s.plan IN ('FlexMax 199', 'FlexMax 299', 'DataPlus 249', 'SmartTalk 199') AND c.churn_date >= '2026-08-01' AND c.churn_date <= '2026-08-31' GROUP BY s.plan ORDER BY customer_loss DESC;",
+    "explanation": "Joins churn_events with subscriber_profile on customer_id, filters for West region, prepaid plans, and August 2026 churn dates, then counts distinct customers grouped by plan."
+  },
+  {
+    "id": "EX-002",
+    "question": "How did the Ramadan data-bundle campaign perform compared to the same campaign last year, by region?",
+    "intent": "Compare exposure counts, response volumes, and conversion percentage for the Ramadan Data Bundle between 2025 and 2026 segmented by region.",
+    "tables": ["campaign_response", "subscriber_profile"],
+    "business_rules": [
+      "Rule 5.1: Total rows represent exposures.",
+      "Rule 5.2: response = 'Responded' indicates conversion.",
+      "Rule 5.3: Response Rate = (Responded / Total) * 100.",
+      "Rule 5.4: Group by region and year using SUBSTR(campaign_date, 1, 4)."
+    ],
+    "sql": "SELECT s.region, SUBSTR(c.campaign_date, 1, 4) AS campaign_year, COUNT(*) AS total_exposures, COUNT(CASE WHEN c.response = 'Responded' THEN 1 END) AS responses, ROUND(COUNT(CASE WHEN c.response = 'Responded' THEN 1 END) * 100.0 / COUNT(*), 2) AS response_rate_pct FROM campaign_response c JOIN subscriber_profile s ON c.customer_id = s.customer_id WHERE c.campaign_name = 'Ramadan Data Bundle' GROUP BY s.region, campaign_year ORDER BY s.region, campaign_year;",
+    "explanation": "Extracts the year from campaign_date, filters for the Ramadan campaign, and aggregates exposures and responses by region and year to compare performance."
+  },
+  {
+    "id": "EX-003",
+    "question": "Show me postpaid small-business customers whose usage dropped more than 30% in the last 60 days.",
+    "intent": "Identify Small Business subscribers on postpaid plans whose daily data usage in the trailing 30 days fell by over 30% compared to the preceding 30-day period.",
+    "tables": ["subscriber_profile", "usage_daily"],
+    "business_rules": [
+      "Rule 2.2: Postpaid plans are UltraData 399 and BusinessPro 599.",
+      "Rule 3.3: customer_type = 'Small Business'.",
+      "Rule 4.1: Compare equivalent 30-day periods: recent (2026-08-02 to 2026-08-31) vs prior (2026-07-03 to 2026-08-01).",
+      "Rule 4.3: Calculate percentage drop and filter for > 30%."
+    ],
+    "sql": "WITH period_usage AS (SELECT u.customer_id, AVG(CASE WHEN u.usage_date >= '2026-08-02' AND u.usage_date <= '2026-08-31' THEN u.data_mb END) AS recent_avg_data, AVG(CASE WHEN u.usage_date >= '2026-07-03' AND u.usage_date <= '2026-08-01' THEN u.data_mb END) AS prior_avg_data FROM usage_daily u WHERE u.usage_date >= '2026-07-03' AND u.usage_date <= '2026-08-31' GROUP BY u.customer_id) SELECT s.customer_id, s.plan, s.region, ROUND(p.prior_avg_data, 2) AS prior_30d_avg_mb, ROUND(p.recent_avg_data, 2) AS recent_30d_avg_mb, ROUND((p.prior_avg_data - p.recent_avg_data) * 100.0 / p.prior_avg_data, 2) AS usage_drop_pct FROM period_usage p JOIN subscriber_profile s ON p.customer_id = s.customer_id WHERE s.customer_type = 'Small Business' AND s.plan IN ('UltraData 399', 'BusinessPro 599') AND p.prior_avg_data > 0 AND ((p.prior_avg_data - p.recent_avg_data) * 100.0 / p.prior_avg_data) > 30.0 ORDER BY usage_drop_pct DESC;",
+    "explanation": "Uses a CTE to compute average daily data consumption in the prior vs recent 30-day windows, then filters for postpaid Small Business accounts with greater than 30% decline."
+  },
+  {
+    "id": "EX-004",
+    "question": "What's driving the rise in early customer loss this quarter — is it concentrated in one channel or one type of customer?",
+    "intent": "Decompose early customer churn (tenure <= 6 months) over the current quarter (June to August 2026) by channel and customer type.",
+    "tables": ["subscriber_profile", "churn_events"],
+    "business_rules": [
+      "Rule 1.2: Count distinct customer_id.",
+      "Rule 1.3: Early customer loss defined by tenure_months <= 6 (or <= 3 months).",
+      "Quarter 3 period covers churn_date >= '2026-06-01'."
+    ],
+    "sql": "SELECT c.churn_channel, s.customer_type, COUNT(DISTINCT c.customer_id) AS early_churn_count, ROUND(COUNT(DISTINCT c.customer_id) * 100.0 / (SELECT COUNT(DISTINCT c2.customer_id) FROM churn_events c2 JOIN subscriber_profile s2 ON c2.customer_id = s2.customer_id WHERE s2.tenure_months <= 6 AND c2.churn_date >= '2026-06-01'), 2) AS pct_of_early_churn FROM churn_events c JOIN subscriber_profile s ON c.customer_id = s.customer_id WHERE s.tenure_months <= 6 AND c.churn_date >= '2026-06-01' GROUP BY c.churn_channel, s.customer_type ORDER BY early_churn_count DESC;",
+    "explanation": "Calculates the count and percentage share of early customer churn grouped by acquisition/churn channel and customer segment to detect channel concentration."
+  },
+  {
+    "id": "EX-005",
+    "question": "How many customers churned by region?",
+    "intent": "Calculate total distinct churned subscribers partitioned across all operating regions.",
+    "tables": ["subscriber_profile", "churn_events"],
+    "business_rules": [
+      "Rule 1.2: Always use COUNT(DISTINCT customer_id).",
+      "Rule 3.1: Region sourced from subscriber_profile."
+    ],
+    "sql": "SELECT s.region, COUNT(DISTINCT c.customer_id) AS churned_customers FROM churn_events c JOIN subscriber_profile s ON c.customer_id = s.customer_id GROUP BY s.region ORDER BY churned_customers DESC;",
+    "explanation": "Aggregates distinct churned subscribers per region by joining churn_events to subscriber_profile."
+  },
+  {
+    "id": "EX-006",
+    "question": "Which campaign had the highest response rate?",
+    "intent": "Rank marketing campaigns by their conversion / acceptance percentage across all historical exposures.",
+    "tables": ["campaign_response"],
+    "business_rules": [
+      "Rule 5.1: Exposures = COUNT(*).",
+      "Rule 5.2: Conversions = COUNT(CASE WHEN response = 'Responded' THEN 1 END).",
+      "Rule 5.3: Calculate response rate percentage."
+    ],
+    "sql": "SELECT campaign_name, campaign_type, COUNT(*) AS total_exposures, COUNT(CASE WHEN response = 'Responded' THEN 1 END) AS responses, ROUND(COUNT(CASE WHEN response = 'Responded' THEN 1 END) * 100.0 / COUNT(*), 2) AS response_rate_pct FROM campaign_response GROUP BY campaign_name, campaign_type ORDER BY response_rate_pct DESC;",
+    "explanation": "Aggregates total contacts and successful responses per campaign and orders by highest response rate."
+  },
+  {
+    "id": "EX-007",
+    "question": "Which customer segment has the highest average data usage?",
+    "intent": "Determine average daily mobile broadband consumption (MB) across customer value tiers.",
+    "tables": ["subscriber_profile", "usage_daily"],
+    "business_rules": [
+      "Rule 3.2: Customer segment from subscriber_profile.",
+      "Average data usage computed on data_mb column."
+    ],
+    "sql": "SELECT s.segment, ROUND(AVG(u.data_mb), 2) AS avg_daily_data_mb, ROUND(AVG(u.voice_minutes), 2) AS avg_daily_voice_minutes FROM subscriber_profile s JOIN usage_daily u ON s.customer_id = u.customer_id GROUP BY s.segment ORDER BY avg_daily_data_mb DESC;",
+    "explanation": "Computes mean daily data and voice usage by joining subscriber_profile to usage_daily and grouping by customer segment."
+  },
+  {
+    "id": "EX-008",
+    "question": "How has collected revenue changed by month?",
+    "intent": "Track the monthly timeline of total collected cash receipts and comparison against billed revenue.",
+    "tables": ["revenue_monthly"],
+    "business_rules": [
+      "Rule 6.1: Revenue tracked on revenue_month using collected_revenue.",
+      "Rule 6.2: Also evaluate collection efficiency."
+    ],
+    "sql": "SELECT revenue_month, ROUND(SUM(billed_revenue), 2) AS total_billed, ROUND(SUM(collected_revenue), 2) AS total_collected, ROUND(SUM(collected_revenue) * 100.0 / SUM(billed_revenue), 2) AS collection_rate_pct FROM revenue_monthly GROUP BY revenue_month ORDER BY revenue_month ASC;",
+    "explanation": "Aggregates billed and collected revenue sums across billing months to demonstrate financial trend and collection rates."
+  },
+  {
+    "id": "EX-009",
+    "question": "What is the total billed and collected revenue by region for the latest month?",
+    "intent": "Provide regional financial performance breakdown for August 2026.",
+    "tables": ["subscriber_profile", "revenue_monthly"],
+    "business_rules": [
+      "Rule 3.1: Sourced from subscriber_profile.region.",
+      "Latest month is '2026-08'."
+    ],
+    "sql": "SELECT s.region, ROUND(SUM(r.billed_revenue), 2) AS billed_revenue, ROUND(SUM(r.collected_revenue), 2) AS collected_revenue FROM revenue_monthly r JOIN subscriber_profile s ON r.customer_id = s.customer_id WHERE r.revenue_month = '2026-08' GROUP BY s.region ORDER BY collected_revenue DESC;",
+    "explanation": "Joins revenue_monthly with subscriber_profile and filters for the target month, grouping by region."
+  },
+  {
+    "id": "EX-0010",
+    "question": "What are the top reasons for customer churn across all regions?",
+    "intent": "Rank stated churn drivers by customer count.",
+    "tables": ["churn_events"],
+    "business_rules": [
+      "Rule 1.2: Count distinct customer_id."
+    ],
+    "sql": "SELECT churn_reason, COUNT(DISTINCT customer_id) AS churn_count, ROUND(COUNT(DISTINCT customer_id) * 100.0 / (SELECT COUNT(DISTINCT customer_id) FROM churn_events), 2) AS share_pct FROM churn_events GROUP BY churn_reason ORDER BY churn_count DESC;",
+    "explanation": "Aggregates customer loss by churn_reason and computes proportional percentage share."
+  },
+  {
+    "id": "EX-0011",
+    "question": "What is the average tenure of customers on each plan?",
+    "intent": "Analyze customer longevity across available subscription plans.",
+    "tables": ["subscriber_profile"],
+    "business_rules": [
+      "Tenure measured in tenure_months from subscriber_profile."
+    ],
+    "sql": "SELECT plan, customer_type, COUNT(*) AS customer_count, ROUND(AVG(tenure_months), 1) AS avg_tenure_months FROM subscriber_profile GROUP BY plan, customer_type ORDER BY avg_tenure_months DESC;",
+    "explanation": "Groups subscribers by plan and customer type, reporting total count and average tenure in months."
+  },
+  {
+    "id": "EX-0012",
+    "question": "Which region has the largest base of Small Business customers?",
+    "intent": "Find the geographic distribution of Small Business enterprise accounts.",
+    "tables": ["subscriber_profile"],
+    "business_rules": [
+      "Rule 3.3: customer_type = 'Small Business'."
+    ],
+    "sql": "SELECT region, COUNT(*) AS small_business_customers FROM subscriber_profile WHERE customer_type = 'Small Business' GROUP BY region ORDER BY small_business_customers DESC;",
+    "explanation": "Filters subscriber_profile for Small Business accounts and groups by region to identify market concentration."
+  },
+  {
+    "id": "EX-0013",
+    "question": "What is the distribution of customers across segments for prepaid versus postpaid plans?",
+    "intent": "Compare segment distribution (Value, Standard, Premium, High Value) across contract types.",
+    "tables": ["subscriber_profile"],
+    "business_rules": [
+      "Rule 2.3: Categorize plan as Prepaid or Postpaid."
+    ],
+    "sql": "SELECT CASE WHEN plan IN ('UltraData 399', 'BusinessPro 599') THEN 'Postpaid' ELSE 'Prepaid' END AS plan_type, segment, COUNT(*) AS customer_count FROM subscriber_profile GROUP BY plan_type, segment ORDER BY plan_type, customer_count DESC;",
+    "explanation": "Uses a CASE statement to classify plans into Prepaid vs Postpaid and aggregates customer counts per segment."
+  },
+  {
+    "id": "EX-0014",
+    "question": "What is the monthly collection efficiency ratio across all months?",
+    "intent": "Measure cash realization rate by dividing total collected revenue by billed revenue month-by-month.",
+    "tables": ["revenue_monthly"],
+    "business_rules": [
+      "Rule 6.2: Collection efficiency = SUM(collected_revenue) / SUM(billed_revenue) * 100."
+    ],
+    "sql": "SELECT revenue_month, ROUND(SUM(billed_revenue), 2) AS total_billed, ROUND(SUM(collected_revenue), 2) AS total_collected, ROUND(SUM(collected_revenue) * 100.0 / SUM(billed_revenue), 2) AS collection_efficiency_pct FROM revenue_monthly GROUP BY revenue_month ORDER BY revenue_month;",
+    "explanation": "Computes monthly billing and collections along with percentage efficiency ratio."
+  },
+  {
+    "id": "EX-0015",
+    "question": "What is the total revenue and ARPU generated by customer type in the month of August 2026?",
+    "intent": "Compare financial volume and average revenue per user between Consumer and Small Business accounts.",
+    "tables": ["subscriber_profile", "revenue_monthly"],
+    "business_rules": [
+      "Rule 3.3: Customer type dimension.",
+      "Rule 6.1: Revenue in month '2026-08'.",
+      "Rule ARPU: Total billed revenue divided by count of distinct customers."
+    ],
+    "sql": "SELECT s.customer_type, COUNT(DISTINCT s.customer_id) AS active_subscribers, ROUND(SUM(r.billed_revenue), 2) AS total_billed_revenue, ROUND(SUM(r.collected_revenue), 2) AS total_collected_revenue, ROUND(SUM(r.billed_revenue) / COUNT(DISTINCT s.customer_id), 2) AS arpu FROM subscriber_profile s JOIN revenue_monthly r ON s.customer_id = r.customer_id WHERE r.revenue_month = '2026-08' GROUP BY s.customer_type ORDER BY arpu DESC;",
+    "explanation": "Joins subscriber_profile and revenue_monthly for August 2026, aggregating total billed/collected revenue and computing ARPU by customer type."
+  }
+]
