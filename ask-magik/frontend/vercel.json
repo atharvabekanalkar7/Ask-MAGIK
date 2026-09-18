@@ -1,0 +1,12 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://ask-magik-production.up.railway.app/api/:path*"
+    },
+    {
+      "source": "/health",
+      "destination": "https://ask-magik-production.up.railway.app/health"
+    }
+  ]
+}

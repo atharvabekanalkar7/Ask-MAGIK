@@ -43,9 +43,65 @@
 /**
  * ASK MAGIK - Front-end Application Controller
  * Skyline Telecom Governed Conversational Intelligence Engine
+ *
+ * API_BASE: Empty string → all /api/* calls are relative, resolved by
+ * Vercel rewrites (vercel.json) to https://ask-magik-production.up.railway.app
+ * in production, and to localhost:8000 when running locally.
  */
 
 document.addEventListener('DOMContentLoaded', () => {
+  // =========================================================================
+  // CENTRALIZED API CONFIGURATION
+  // =========================================================================
+  // Keep as empty string. Vercel rewrites /api/* → Railway backend in prod.
+  // Locally, uvicorn serves both frontend and backend, so relative paths work.
+  const API_BASE = '';
+
+  /**
+   * Production-safe fetch wrapper.
+   * - Adds timeout (default 30 s).
+   * - Throws structured errors for network failures, timeouts, and HTTP errors.
+   * - Never exposes stack traces or internal URLs to users.
+   * @param {string} path - Relative API path, e.g. '/api/chat'
+   * @param {RequestInit} options - Standard fetch options
+   * @param {number} timeoutMs - Request timeout in milliseconds
+   */
+  async function apiFetch(path, options = {}, timeoutMs = 30000) {
+    const controller = options.signal
+      ? null // caller owns the signal, no extra wrapping
+      : new AbortController();
+    const signal = controller ? controller.signal : options.signal;
+
+    let timeoutId;
+    if (controller) {
+      timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    }
+
+    try {
+      const res = await fetch(API_BASE + path, { ...options, signal });
+      if (timeoutId) clearTimeout(timeoutId);
+
+      if (!res.ok) {
+        let detail = `HTTP ${res.status}`;
+        try {
+          const body = await res.json();
+          if (body && body.detail) detail = body.detail;
+        } catch (_) { /* ignore JSON parse error */ }
+        const err = new Error(detail);
+        err.status = res.status;
+        throw err;
+      }
+      return res;
+    } catch (err) {
+      if (timeoutId) clearTimeout(timeoutId);
+      if (err.name === 'AbortError' && !options.signal) {
+        const te = new Error('Request timed out. Please try again.');
+        te.isTimeout = true;
+        throw te;
+      }
+      throw err;
+    }
+  }
   // State
   const state = {
     currentView: 'overview',
@@ -287,29 +343,37 @@ document.addEventListener('DOMContentLoaded', () => {
     // Save insight button
     btnSaveCurrentInsight.addEventListener('click', async () => {
       if (!state.lastResult) return;
+
+      const originalHtml = btnSaveCurrentInsight.innerHTML;
+      btnSaveCurrentInsight.disabled = true;
+      btnSaveCurrentInsight.innerHTML = '<span>Saving...</span>';
+
       try {
-        await fetch('/api/history/save', {
+        const res = await apiFetch('/api/history/save', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            question: state.lastResult.question,
-            key_insight: state.lastResult.key_insight,
-            supporting_figures: state.lastResult.supporting_figures,
-            sql: state.lastResult.sql,
-            confidence: state.lastResult.confidence,
-            chart: state.lastResult.chart,
+            question: state.lastResult.question || '',
+            key_insight: state.lastResult.key_insight || '',
+            supporting_figures: state.lastResult.supporting_figures || [],
+            sql: state.lastResult.sql || '',
+            confidence: state.lastResult.confidence || 'HIGH',
+            chart: state.lastResult.chart || {},
           }),
-        });
+        }, 10000);
+
+        btnSaveCurrentInsight.disabled = false;
         btnSaveCurrentInsight.innerHTML = '<span>✓ Saved</span>';
         setTimeout(() => {
-          btnSaveCurrentInsight.innerHTML = `
-            <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6">
-              <path d="M4 2.5h8a1 1 0 0 1 1 1v10l-5-3-5 3v-10a1 1 0 0 1 1-1z"></path>
-            </svg>
-            <span>Save Insight</span>`;
+          btnSaveCurrentInsight.innerHTML = originalHtml;
         }, 2500);
       } catch (err) {
         console.error('Error saving insight:', err);
+        btnSaveCurrentInsight.disabled = false;
+        btnSaveCurrentInsight.innerHTML = '<span>✕ Save failed</span>';
+        setTimeout(() => {
+          btnSaveCurrentInsight.innerHTML = originalHtml;
+        }, 2500);
       }
     });
 
@@ -357,31 +421,52 @@ document.addEventListener('DOMContentLoaded', () => {
   // =========================================================================
   async function loadOverviewData() {
     try {
-      const res = await fetch('/api/overview/metrics');
-      if (res.ok) {
-        const data = await res.json();
-        // Loaded pilot metrics
-        console.log('Overview metrics loaded:', data);
-      }
+      const res = await apiFetch('/api/overview/metrics', {}, 10000);
+      const data = await res.json();
+      console.info('[Overview] Pilot metrics loaded:', data.status || 'OK');
+      // Populate any overview-specific KPI elements if present in DOM
+      const elStatus = document.getElementById('overview-status-badge');
+      if (elStatus && data.status) elStatus.textContent = data.status;
     } catch (err) {
-      console.warn('Overview data fetch failed:', err);
+      console.warn('Overview data fetch failed:', err.message);
     }
   }
 
   async function checkSystemStatus() {
+    const statusText = document.getElementById('sidebar-status-text');
     try {
-      const res = await fetch('/api/system-status');
-      if (res.ok) {
-        const data = await res.json();
-        const statusText = document.getElementById('sidebar-status-text');
-        if (data.system_operational) {
-          statusText.textContent = 'Operational';
-        } else {
-          statusText.textContent = 'Degraded';
+      // Fetch both system status and RAG status in parallel
+      const [sysRes, ragRes] = await Promise.allSettled([
+        apiFetch('/api/system-status', {}, 10000),
+        apiFetch('/api/rag/status', {}, 10000),
+      ]);
+
+      let operational = false;
+      if (sysRes.status === 'fulfilled') {
+        const data = await sysRes.value.json();
+        operational = !!data.system_operational;
+        if (statusText) {
+          statusText.textContent = operational ? 'Operational' : 'Degraded';
+          statusText.style.color = operational ? 'var(--accent-green)' : '#f59e0b';
         }
+      } else {
+        if (statusText) {
+          statusText.textContent = 'Offline';
+          statusText.style.color = '#ef4444';
+        }
+      }
+
+      // Log RAG status to console (no UI impact needed here)
+      if (ragRes.status === 'fulfilled') {
+        const ragData = await ragRes.value.json();
+        console.info(`[RAG] status=${ragData.status}, docs=${ragData.document_count}`);
       }
     } catch (err) {
       console.warn('System status fetch failed:', err);
+      if (statusText) {
+        statusText.textContent = 'Offline';
+        statusText.style.color = '#ef4444';
+      }
     }
   }
 
@@ -393,13 +478,14 @@ document.addEventListener('DOMContentLoaded', () => {
       state.preflightController.abort();
     }
     state.preflightController = new AbortController();
+    const signal = state.preflightController.signal;
 
     try {
-      const res = await fetch('/api/rag/context', {
+      const res = await fetch(API_BASE + '/api/rag/context', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ question }),
-        signal: state.preflightController.signal,
+        signal,
       });
       if (res.ok) {
         const data = await res.json();
@@ -407,8 +493,9 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     } catch (err) {
       if (err.name !== 'AbortError') {
-        console.warn('Preflight context failed:', err);
+        console.warn('Preflight context failed:', err.message);
       }
+      // Silently ignore — preflight is non-critical
     }
   }
 
@@ -436,7 +523,7 @@ document.addEventListener('DOMContentLoaded', () => {
     resConfidence.style.backgroundColor = 'transparent';
 
     try {
-      const res = await fetch('/api/chat', {
+      const res = await fetch(API_BASE + '/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ question }),
@@ -444,12 +531,26 @@ document.addEventListener('DOMContentLoaded', () => {
       });
 
       if (!res.ok) {
-        throw new Error(`API error (${res.status})`);
+        let errDetail = `Server error (${res.status})`;
+        try {
+          const body = await res.json();
+          if (body && body.detail) errDetail = body.detail;
+        } catch (_) { /* ignore */ }
+        throw new Error(errDetail);
       }
 
-      const data = await res.json();
-      state.lastResult = data;
+      let data;
+      try {
+        data = await res.json();
+      } catch (_) {
+        throw new Error('Received an unexpected response from the server. Please try again.');
+      }
 
+      if (!data || typeof data !== 'object') {
+        throw new Error('Malformed response from analytics pipeline.');
+      }
+
+      state.lastResult = data;
       renderExecutedResult(data);
 
       if (data.retrieved_context || data.analysis_trace) {
@@ -458,11 +559,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
     } catch (err) {
       if (err.name === 'AbortError') return;
+
+      // Professional, user-safe error display
+      let userMsg;
+      if (err.isTimeout || err.name === 'TimeoutError') {
+        userMsg = 'The analytics pipeline timed out. Please try a simpler query or try again in a moment.';
+      } else if (!navigator.onLine || err.message.toLowerCase().includes('failed to fetch') || err.message.toLowerCase().includes('networkerror')) {
+        userMsg = 'Network connection unavailable. Please check your connection and try again.';
+      } else if (err.status >= 500) {
+        userMsg = 'The backend service encountered an error. Our team has been notified. Please try again shortly.';
+      } else if (err.status >= 400) {
+        userMsg = `Query could not be processed: ${err.message}`;
+      } else {
+        userMsg = err.message || 'An unexpected error occurred. Please try again.';
+      }
+
       resKeyInsight.textContent = 'Pipeline execution notice';
-      resAnswerText.textContent = `Error: ${err.message}. Please verify the query scope and database connection.`;
+      resAnswerText.textContent = userMsg;
       resConfidence.textContent = 'CONFIDENCE: LOW';
       resConfidence.style.color = '#ef4444';
       resConfidence.style.backgroundColor = 'rgba(239, 68, 68, 0.15)';
+      chartContainer.innerHTML = '<div style="color:var(--text-muted);font-family:var(--font-mono);font-size:12px;padding:40px;">No visualization available.</div>';
+      tableContainer.innerHTML = '';
+      sqlDisplayBlock.textContent = '-- Query did not execute';
     } finally {
       if (!signal.aborted) {
         btnSubmitQuery.disabled = false;
@@ -689,10 +808,13 @@ document.addEventListener('DOMContentLoaded', () => {
     container.innerHTML = '<div style="color:var(--text-muted);font-family:var(--font-mono);font-size:12px;">Loading DataMart schema and row telemetry...</div>';
 
     try {
-      const res = await fetch('/api/datasources');
-      if (!res.ok) throw new Error('Failed to fetch data sources');
+      const res = await apiFetch('/api/datasources', {}, 15000);
       const data = await res.json();
       state.datasources = data;
+
+      if (!data || !Array.isArray(data.tables)) {
+        throw new Error('Unexpected response format from DataSources endpoint.');
+      }
 
       container.innerHTML = '';
       data.tables.forEach(table => {
@@ -732,9 +854,12 @@ document.addEventListener('DOMContentLoaded', () => {
     openModal(previewModal);
 
     try {
-      const res = await fetch(`/api/datasources/${tableName}/preview?limit=15`);
-      if (!res.ok) throw new Error('Preview fetch failed');
+      const res = await apiFetch(`/api/datasources/${encodeURIComponent(tableName)}/preview?limit=15`, {}, 15000);
       const data = await res.json();
+
+      if (!data || !Array.isArray(data.columns) || !Array.isArray(data.rows)) {
+        throw new Error('Unexpected preview response format.');
+      }
 
       let html = '<table class="data-table"><thead><tr>';
       data.columns.forEach(col => { html += `<th>${escapeHtml(col)}</th>`; });
@@ -761,7 +886,7 @@ document.addEventListener('DOMContentLoaded', () => {
     uploadStatusMsg.textContent = `Validating schema and zero PII policies for '${filename}'...`;
 
     try {
-      const res = await fetch('/api/datasources/upload', {
+      const res = await apiFetch('/api/datasources/upload', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -769,22 +894,25 @@ document.addEventListener('DOMContentLoaded', () => {
           file_name: filename,
           records_count: 250,
         }),
-      });
+      }, 20000);
 
-      if (res.ok) {
-        const data = await res.json();
-        uploadStatusMsg.style.backgroundColor = 'var(--accent-green-subtle)';
-        uploadStatusMsg.style.color = 'var(--accent-green)';
-        uploadStatusMsg.textContent = data.message;
-        setTimeout(() => {
-          closeModal(uploadModal);
-          uploadStatusMsg.classList.add('hidden');
-          if (state.currentView === 'datasources') loadDataSources();
-        }, 1800);
-      }
+      const data = await res.json();
+      uploadStatusMsg.style.backgroundColor = 'var(--accent-green-subtle)';
+      uploadStatusMsg.style.color = 'var(--accent-green)';
+      uploadStatusMsg.textContent = data.message || 'Upload staged successfully.';
+      setTimeout(() => {
+        closeModal(uploadModal);
+        uploadStatusMsg.classList.add('hidden');
+        if (state.currentView === 'datasources') loadDataSources();
+      }, 1800);
     } catch (err) {
       uploadStatusMsg.style.color = '#ef4444';
-      uploadStatusMsg.textContent = `Upload error: ${err.message}`;
+      uploadStatusMsg.style.backgroundColor = 'rgba(239, 68, 68, 0.1)';
+      if (err.isTimeout) {
+        uploadStatusMsg.textContent = 'Upload timed out. Please try again.';
+      } else {
+        uploadStatusMsg.textContent = `Upload failed: ${err.message}`;
+      }
     }
   }
 
@@ -796,12 +924,11 @@ document.addEventListener('DOMContentLoaded', () => {
     tbody.innerHTML = '<tr><td colspan="7" style="color:var(--text-muted);font-family:var(--font-mono);padding:20px;">Loading history...</td></tr>';
 
     try {
-      const res = await fetch('/api/history');
-      if (!res.ok) throw new Error('Failed to load history');
+      const res = await apiFetch('/api/history', {}, 15000);
       const data = await res.json();
       state.history = data;
 
-      if (data.length === 0) {
+      if (!Array.isArray(data) || data.length === 0) {
         tbody.innerHTML = '<tr><td colspan="7" style="color:var(--text-muted);padding:20px;">No queries run yet in this session.</td></tr>';
         return;
       }
@@ -810,12 +937,12 @@ document.addEventListener('DOMContentLoaded', () => {
       data.forEach(item => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
-          <td style="font-family:var(--font-mono);font-size:11px;">${item.timestamp}</td>
-          <td style="font-weight:500;color:#ffffff;">${escapeHtml(item.question)}</td>
-          <td style="font-family:var(--font-mono);font-size:11px;">${(item.tables_used || []).join(', ')}</td>
+          <td style="font-family:var(--font-mono);font-size:11px;">${escapeHtml(String(item.timestamp || '—'))}</td>
+          <td style="font-weight:500;color:#ffffff;">${escapeHtml(item.question || '—')}</td>
+          <td style="font-family:var(--font-mono);font-size:11px;">${escapeHtml((item.tables_used || []).join(', '))}</td>
           <td style="font-family:var(--font-mono);font-size:11px;">${item.row_count || 0}</td>
           <td style="font-family:var(--font-mono);font-size:11px;">${item.execution_time_ms || 0} ms</td>
-          <td><span class="badge-confidence" style="font-size:10px;">${item.confidence || 'HIGH'}</span></td>
+          <td><span class="badge-confidence" style="font-size:10px;">${escapeHtml(item.confidence || 'HIGH')}</span></td>
           <td><button class="btn-icon-subtle btn-rerun-query">Re-run</button></td>
         `;
 
@@ -828,7 +955,13 @@ document.addEventListener('DOMContentLoaded', () => {
         tbody.appendChild(tr);
       });
     } catch (err) {
-      tbody.innerHTML = `<tr><td colspan="7" style="color:#ef4444;">Error: ${err.message}</td></tr>`;
+      const msg = err.isTimeout
+        ? 'Request timed out loading history.'
+        : err.message || 'Failed to load history.';
+      tbody.innerHTML = `<tr><td colspan="7" style="color:#ef4444;padding:16px;">
+        <strong>Could not load query history.</strong><br>
+        <span style="font-size:11px;color:#fca5a5;">${escapeHtml(msg)}</span>
+      </td></tr>`;
     }
   }
 
@@ -840,12 +973,11 @@ document.addEventListener('DOMContentLoaded', () => {
     container.innerHTML = '<div style="color:var(--text-muted);font-family:var(--font-mono);font-size:12px;">Loading saved insights...</div>';
 
     try {
-      const res = await fetch('/api/insights/saved');
-      if (!res.ok) throw new Error('Failed to load insights');
+      const res = await apiFetch('/api/insights/saved', {}, 15000);
       const data = await res.json();
       state.savedInsights = data;
 
-      if (data.length === 0) {
+      if (!Array.isArray(data) || data.length === 0) {
         container.innerHTML = '<div style="color:var(--text-muted);padding:30px;">No saved insights yet. Bookmark any answer from Ask Data.</div>';
         return;
       }
@@ -856,32 +988,48 @@ document.addEventListener('DOMContentLoaded', () => {
         card.className = 'insight-card';
         card.innerHTML = `
           <div class="ic-header">
-            <span class="ic-title">${escapeHtml(item.title)}</span>
-            <span class="ic-date">${item.saved_at || 'Saved'}</span>
+            <span class="ic-title">${escapeHtml(item.title || item.question || 'Insight')}</span>
+            <span class="ic-date">${escapeHtml(item.saved_at || 'Saved')}</span>
           </div>
-          <div class="ic-q">"${escapeHtml(item.question)}"</div>
-          <div class="ic-insight">${escapeHtml(item.key_insight)}</div>
+          <div class="ic-q">"${escapeHtml(item.question || '')}"</div>
+          <div class="ic-insight">${escapeHtml(item.key_insight || '')}</div>
           <div class="ic-footer">
             <button class="btn-primary btn-inspect-insight" style="padding:4px 12px;font-size:11px;">Inspect Query</button>
-            <button class="btn-del-insight" data-id="${item.id}">Remove</button>
+            <button class="btn-del-insight" data-id="${escapeHtml(item.id)}">Remove</button>
           </div>
         `;
 
         card.querySelector('.btn-inspect-insight').addEventListener('click', () => {
           switchView('ask-data');
-          queryInput.value = item.question;
-          executeQuery(item.question);
+          queryInput.value = item.question || '';
+          if (item.question) executeQuery(item.question);
         });
 
-        card.querySelector('.btn-del-insight').addEventListener('click', async () => {
-          await fetch(`/api/insights/saved/${item.id}`, { method: 'DELETE' });
-          loadSavedInsights();
+        card.querySelector('.btn-del-insight').addEventListener('click', async (e) => {
+          const btn = e.currentTarget;
+          btn.disabled = true;
+          btn.textContent = 'Removing...';
+          try {
+            await apiFetch(`/api/insights/saved/${encodeURIComponent(item.id)}`, { method: 'DELETE' }, 10000);
+            loadSavedInsights();
+          } catch (delErr) {
+            btn.disabled = false;
+            btn.textContent = 'Remove';
+            console.error('Failed to delete insight:', delErr);
+          }
         });
 
         container.appendChild(card);
       });
     } catch (err) {
-      container.innerHTML = `<div style="color:#ef4444;">Error: ${err.message}</div>`;
+      const msg = err.isTimeout
+        ? 'Request timed out loading insights.'
+        : err.message || 'Failed to load saved insights.';
+      container.innerHTML = `
+        <div style="color:#ef4444;padding:20px;">
+          <strong>Could not load saved insights.</strong><br>
+          <span style="font-size:12px;color:#fca5a5;">${escapeHtml(msg)}</span>
+        </div>`;
     }
   }
 
@@ -895,12 +1043,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const relContainer = document.getElementById('relationships-container');
 
     try {
-      const res = await fetch('/api/knowledge');
-      if (!res.ok) throw new Error('Failed to load knowledge');
+      const res = await apiFetch('/api/knowledge', {}, 15000);
       const data = await res.json();
       state.knowledge = data;
 
-      vectorStatus.textContent = `✓ Vector Store: ${data.vector_store_documents} docs (${data.embedding_model})`;
+      vectorStatus.textContent = `✓ Vector Store: ${data.vector_store_documents || 0} docs (${data.embedding_model || 'N/A'})`;
 
       // Render Glossary
       glossaryContainer.innerHTML = '';
@@ -968,10 +1115,13 @@ document.addEventListener('DOMContentLoaded', () => {
     list.innerHTML = '<div style="color:var(--text-muted);font-family:var(--font-mono);font-size:12px;">Loading policies...</div>';
 
     try {
-      const res = await fetch('/api/security/policies');
-      if (!res.ok) throw new Error('Failed to load policies');
+      const res = await apiFetch('/api/security/policies', {}, 15000);
       const data = await res.json();
       state.security = data;
+
+      if (!data || !Array.isArray(data.rules)) {
+        throw new Error('Unexpected response from security policies endpoint.');
+      }
 
       list.innerHTML = '';
       data.rules.forEach(r => {
@@ -999,13 +1149,11 @@ document.addEventListener('DOMContentLoaded', () => {
     btnTestSandbox.innerHTML = '<span>VALIDATING...</span>';
 
     try {
-      const res = await fetch('/api/security/validate', {
+      const res = await apiFetch('/api/security/validate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sql }),
-      });
-
-      if (!res.ok) throw new Error('Validation failed');
+      }, 15000);
       const data = await res.json();
 
       sandboxResultBox.classList.remove('hidden');
@@ -1041,10 +1189,14 @@ document.addEventListener('DOMContentLoaded', () => {
     tbody.innerHTML = '<tr><td colspan="8" style="color:var(--text-muted);font-family:var(--font-mono);padding:20px;">Loading audit trail...</td></tr>';
 
     try {
-      const res = await fetch('/api/audit/logs');
-      if (!res.ok) throw new Error('Failed to load audit logs');
+      const res = await apiFetch('/api/audit/logs', {}, 15000);
       const data = await res.json();
       state.auditLogs = data;
+
+      if (!Array.isArray(data) || data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="color:var(--text-muted);padding:20px;">No audit events recorded yet.</td></tr>';
+        return;
+      }
 
       tbody.innerHTML = '';
       data.forEach(log => {
@@ -1063,7 +1215,13 @@ document.addEventListener('DOMContentLoaded', () => {
         tbody.appendChild(tr);
       });
     } catch (err) {
-      tbody.innerHTML = `<tr><td colspan="8" style="color:#ef4444;">Error: ${err.message}</td></tr>`;
+      const msg = err.isTimeout
+        ? 'Request timed out loading audit logs.'
+        : err.message || 'Failed to load audit logs.';
+      tbody.innerHTML = `<tr><td colspan="8" style="color:#ef4444;padding:16px;">
+        <strong>Could not load audit trail.</strong><br>
+        <span style="font-size:11px;color:#fca5a5;">${escapeHtml(msg)}</span>
+      </td></tr>`;
     }
   }
 
@@ -1072,16 +1230,18 @@ document.addEventListener('DOMContentLoaded', () => {
   // =========================================================================
   async function loadSettings() {
     try {
-      const res = await fetch('/api/settings');
-      if (res.ok) {
-        const data = await res.json();
-        document.getElementById('setting-ollama-url').value = data.ollama_base_url || 'http://localhost:11434';
-        document.getElementById('setting-ollama-model').value = data.ollama_model || 'llama3:latest';
-        document.getElementById('setting-rag-topk').value = data.rag_top_k || 4;
-        document.getElementById('setting-freshness-note').value = data.data_freshness || 'UPDATED TODAY';
-      }
+      const res = await apiFetch('/api/settings', {}, 10000);
+      const data = await res.json();
+      const ollamaUrlEl = document.getElementById('setting-ollama-url');
+      const ollamaModelEl = document.getElementById('setting-ollama-model');
+      const ragTopkEl = document.getElementById('setting-rag-topk');
+      const freshnessEl = document.getElementById('setting-freshness-note');
+      if (ollamaUrlEl) ollamaUrlEl.value = data.ollama_base_url || 'http://localhost:11434';
+      if (ollamaModelEl) ollamaModelEl.value = data.ollama_model || 'llama3:latest';
+      if (ragTopkEl) ragTopkEl.value = data.rag_top_k || 4;
+      if (freshnessEl) freshnessEl.value = data.data_freshness || 'UPDATED TODAY';
     } catch (err) {
-      console.warn('Load settings failed:', err);
+      console.warn('Load settings failed:', err.message);
     }
   }
 
@@ -1097,18 +1257,24 @@ document.addEventListener('DOMContentLoaded', () => {
         data_refresh_note: document.getElementById('setting-freshness-note').value.trim(),
       };
 
-      const res = await fetch('/api/settings', {
+      await apiFetch('/api/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
-      });
+      }, 10000);
 
-      if (res.ok) {
-        closeModal(settingsModal);
-        checkSystemStatus();
-      }
+      closeModal(settingsModal);
+      checkSystemStatus();
     } catch (err) {
-      alert(`Failed to save settings: ${err.message}`);
+      // Show error in the modal rather than a disruptive alert
+      const errEl = document.getElementById('settings-error-msg');
+      if (errEl) {
+        errEl.textContent = `Failed to save: ${err.message}`;
+        errEl.style.display = 'block';
+        setTimeout(() => { errEl.style.display = 'none'; }, 4000);
+      } else {
+        console.error('Failed to save settings:', err.message);
+      }
     } finally {
       btnSaveSettings.disabled = false;
       btnSaveSettings.innerHTML = '<span>SAVE CONFIG</span><span class="btn-arrow">→</span>';
