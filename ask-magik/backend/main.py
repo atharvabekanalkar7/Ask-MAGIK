@@ -124,9 +124,18 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# CORS origins — allow the deployed Vercel frontend and local development.
+# ALLOWED_ORIGINS env var can override with a comma-separated list.
+_raw_origins = os.environ.get(
+    "ALLOWED_ORIGINS",
+    "https://ask-magik-insightx.vercel.app,http://localhost:8000,http://127.0.0.1:8000",
+)
+_allow_origins = [o.strip() for o in _raw_origins.split(",") if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_allow_origins,
+    allow_origin_regex=r"https://.*\.vercel\.app",  # covers all Vercel preview deployments
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -649,4 +658,7 @@ if frontend_dir.exists():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("backend.main:app", host="127.0.0.1", port=8000, reload=True)
+    # Bind to 0.0.0.0 so Railway (and other cloud hosts) can route external traffic.
+    # PORT env var is provided automatically by Railway; fall back to 8000 locally.
+    _port = int(os.environ.get("PORT", 8000))
+    uvicorn.run("backend.main:app", host="0.0.0.0", port=_port, reload=False)

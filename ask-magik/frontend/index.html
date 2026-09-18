@@ -9,8 +9,34 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./style.css">
+  <style>
+    /* Prevent flash: hide main layout until preloader JS removes .preloading */
+    body.preloading #app-layout { visibility: hidden; }
+  </style>
 </head>
-<body>
+<body class="preloading">
+
+  <!-- PRELOADER SPLASH SCREEN -->
+  <div id="magik-preloader" aria-hidden="true">
+    <div class="mpl-stage">
+
+      <!-- Brand line -->
+      <div class="mpl-brand">
+        <div class="mpl-brand-mark"></div>
+        <span class="mpl-brand-name">ASK MAGIK</span>
+      </div>
+
+      <!-- Thin rule that draws in -->
+      <div class="mpl-rule"></div>
+
+      <!-- Team block -->
+      <div class="mpl-team">
+        <span class="mpl-team-label">TEAM INSIGHTX</span>
+        <span class="mpl-team-members">Atharva S.B.&nbsp;&nbsp;&middot;&nbsp;&nbsp;Pranjal Soni&nbsp;&nbsp;&middot;&nbsp;&nbsp;Kanishk Gaur&nbsp;&nbsp;&middot;&nbsp;&nbsp;Pratyush Singh</span>
+      </div>
+
+    </div>
+  </div>
   <div class="app-layout" id="app-layout">
     
     <!-- LEFT SIDEBAR -->

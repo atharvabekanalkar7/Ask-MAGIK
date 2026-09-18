@@ -1837,3 +1837,133 @@ body {
 .hidden {
   display: none !important;
 }
+
+/* ==========================================================================
+   PRELOADER / SPLASH SCREEN
+   ========================================================================== */
+
+#magik-preloader {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #06080d;               /* matches --bg-app */
+  /* Fade out when .mpl-exit is added */
+  opacity: 1;
+  transition: opacity 0.65s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: all;
+}
+
+#magik-preloader.mpl-exit {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Stage: vertical centred column */
+.mpl-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  text-align: center;
+  user-select: none;
+}
+
+/* ---- Brand row ---- */
+.mpl-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  opacity: 0;
+  transform: translateY(10px);
+  animation: mpl-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.15s forwards;
+}
+
+/* Small accent square – matches Ask MAGIK's cyan accent */
+.mpl-brand-mark {
+  width: 8px;
+  height: 28px;
+  background: var(--accent-cyan, #00a2ff);
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.mpl-brand-name {
+  font-family: var(--font-sans, 'Inter', sans-serif);
+  font-size: clamp(1.75rem, 5vw, 2.6rem);
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  color: #f8fafc;
+  text-transform: uppercase;
+}
+
+/* ---- Divider rule that draws in from left ---- */
+.mpl-rule {
+  width: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent-cyan, #00a2ff) 40%, transparent);
+  margin: 24px auto 22px;
+  animation: mpl-draw-rule 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.75s forwards;
+}
+
+/* ---- Team block ---- */
+.mpl-team {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  opacity: 0;
+  transform: translateY(8px);
+  animation: mpl-rise 0.55s cubic-bezier(0.22, 1, 0.36, 1) 1.2s forwards;
+}
+
+.mpl-team-label {
+  font-family: var(--font-sans, 'Inter', sans-serif);
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--accent-cyan, #00a2ff);
+}
+
+.mpl-team-members {
+  font-family: var(--font-sans, 'Inter', sans-serif);
+  font-size: clamp(0.75rem, 2vw, 0.88rem);
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  color: #94a3b8;                          /* --text-secondary */
+  line-height: 1.7;
+}
+
+/* ---- Keyframes ---- */
+@keyframes mpl-rise {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes mpl-draw-rule {
+  to {
+    width: clamp(200px, 40vw, 380px);
+  }
+}
+
+/* ---- Reduced-motion: skip all animation, just hold for 0.5s then exit ---- */
+@media (prefers-reduced-motion: reduce) {
+  .mpl-brand,
+  .mpl-team {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+  .mpl-rule {
+    animation: none;
+    width: clamp(200px, 40vw, 380px);
+  }
+  #magik-preloader {
+    transition: opacity 0.3s;
+  }
+}

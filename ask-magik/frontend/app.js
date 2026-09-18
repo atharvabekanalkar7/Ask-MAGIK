@@ -1,4 +1,46 @@
 /**
+ * PRELOADER CONTROLLER
+ * Runs immediately — independent of DOMContentLoaded.
+ * Sequence: brand in (0.85s) → rule draws (1.35s) → team in (1.75s) → hold → exit (2.4s)
+ */
+(function initPreloader() {
+  const TOTAL_HOLD_MS = 2400;   // ms before fade begins (covers full animation + brief hold)
+  const FADE_MS      = 650;     // must match CSS transition duration
+
+  var prefersReduced = window.matchMedia &&
+                       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  var delay = prefersReduced ? 500 : TOTAL_HOLD_MS;
+
+  function dismissPreloader() {
+    var preloader = document.getElementById('magik-preloader');
+    if (!preloader) return;
+
+    // Trigger CSS fade-out
+    preloader.classList.add('mpl-exit');
+
+    // Reveal main app
+    document.body.classList.remove('preloading');
+
+    // Remove from DOM after transition so it can never interfere
+    setTimeout(function () {
+      if (preloader && preloader.parentNode) {
+        preloader.parentNode.removeChild(preloader);
+      }
+    }, FADE_MS + 50);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function () {
+      setTimeout(dismissPreloader, delay);
+    });
+  } else {
+    // DOMContentLoaded already fired (e.g. deferred / module scripts)
+    setTimeout(dismissPreloader, delay);
+  }
+})();
+
+/**
  * ASK MAGIK - Front-end Application Controller
  * Skyline Telecom Governed Conversational Intelligence Engine
  */

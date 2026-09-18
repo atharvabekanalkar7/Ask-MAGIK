@@ -1,0 +1,9 @@
+[build]
+builder = "nixpacks"
+
+[deploy]
+# Railway injects $PORT automatically. We pass it through to uvicorn.
+# Root directory for this service is ask-magik/ (set in Railway dashboard).
+startCommand = "uvicorn backend.main:app --host 0.0.0.0 --port $PORT"
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3

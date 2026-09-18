@@ -31,9 +31,10 @@ htmlcov/
 # Environment files
 .env
 
-# Database (keep schema and seeds, ignore actual sqlite db in git if needed, or track if desired)
-# data/*.db
-# data/*.sqlite
+# Database — never commit the SQLite file (143 MB) or its journal files
+data/*.db
+data/*.db-shm
+data/*.db-wal
 
 # IDE & OS
 .vscode/
